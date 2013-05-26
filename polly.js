@@ -213,6 +213,7 @@
   function getName(obj) {
     var funcNameRegex = /function (.{1,})\(/;
     var results = (funcNameRegex).exec((obj).constructor.toString());
+
     return (results && results.length > 1) ? results[1] : "";
   }
 
@@ -221,12 +222,7 @@
 
     for (var key in src) {
       if (attrs.indexOf(key) > -1) {
-        if (typeof src[key] == "object") {
-          dest[key] = '';
-        }
-        else {
-          dest[key] = src[key];
-        }
+        dest[key] = (typeof src[key] == "object") ? '' : src[key];
       }
     }
 
