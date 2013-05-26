@@ -6,14 +6,14 @@
   } else {
     root[name] = factory();
   }
-}("parrot", this, function () {
+}("polly", this, function () {
 
   "use strict";
 
   var time, intervalId;
   var steps = [];
-  var template = '<a data-parrot-action="startstop" href="#">record</a> ' +
-                 '<a data-parrot-action="play" href="#">play</a>';
+  var template = '<a data-polly-action="startstop" href="#">record</a> ' +
+                 '<a data-polly-action="play" href="#">play</a>';
 
   var recording = false;
   var playing = false;
@@ -28,8 +28,8 @@
     div.style.cssText = 'position: absolute; top: 0px; right: 5px;';
     document.body.appendChild(div);
 
-    startEl = document.querySelector('[data-parrot-action=startstop]');
-    playEl = document.querySelector('[data-parrot-action=play]');
+    startEl = document.querySelector('[data-polly-action=startstop]');
+    playEl = document.querySelector('[data-polly-action=play]');
 
     startEl.addEventListener('click', startStop, false);
     playEl.addEventListener('click', play, false);
@@ -99,7 +99,7 @@
   }
 
   function record(e) {
-    var attr = e.target.getAttribute('data-parrot-action');
+    var attr = e.target.getAttribute('data-polly-action');
     if (attr) return;
 
     time = time || Date.now();
