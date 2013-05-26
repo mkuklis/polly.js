@@ -12,15 +12,57 @@
 
   var time, intervalId;
   var steps = [];
-  var template = '<a data-polly-action="startstop" href="#">record</a> ' +
-                 '<a data-polly-action="play" href="#">play</a>';
+  var template = '<a data-polly-action="record" href="#">record</a> ' +
+                 '<a data-polly-action="run" href="#">run</a>';
 
   var recording = false;
-  var playing = false;
+  var running = false;
 
-  var startEl, playEl;
+  var recordEl, runEl;
+  var events = 'click keypress change'.split(' ');
 
-  var events = 'click keypress'.split(' ');
+  var eventMap = {
+    'Event': {
+      name: 'HTMLEvents',
+      fn: 'initEvent',
+      args: ['type', 'canBubble', 'cancelable']
+    },
+    'KeyboardEvent': {
+      name: 'KeyboardEvent',
+      fn: 'initKeyboardEvent',
+      args: [ 'type', 'canBubble', 'cancelable',
+              'view', 'keyCode', 'charCode', 'keyLocation' ]
+    },
+    'MouseEvent': {
+      name: 'MouseEvent',
+      fn: 'initMouseEvent',
+      args: [ 'type', 'canBubble', 'cancelable',
+        'view', 'detail', 'screenX',
+        'screenY', 'clientX', 'clientY', 'ctrlKey',
+        'altKey', 'shiftKey', 'metaKey', 'button' ]
+    }
+  };
+
+  var simulateFilters = {
+    keypress: function (el, step) {
+      el.value += String.fromCharCode(step.keyCode);
+    },
+
+    change: function (el, step) {
+      if (step.value) {
+        el.value = step.value;
+      }
+    }
+  };
+
+  var captureFilters = {
+    change: function (event, step) {
+      var el = event.target;
+      step.value = el.value;
+      step.index = el.selectedIndex;
+    }
+  };
+
 
   function init() {
     var div = document.createElement('div');
@@ -28,52 +70,53 @@
     div.style.cssText = 'position: absolute; top: 0px; right: 5px;';
     document.body.appendChild(div);
 
-    startEl = document.querySelector('[data-polly-action=startstop]');
-    playEl = document.querySelector('[data-polly-action=play]');
+    recordEl = document.querySelector('[data-polly-action=record]');
+    runEl = document.querySelector('[data-polly-action=run]');
 
-    startEl.addEventListener('click', startStop, false);
-    playEl.addEventListener('click', play, false);
+    recordEl.addEventListener('click', toggleRecord, false);
+    runEl.addEventListener('click', toggleRun, false);
   }
 
-  function startStop(e) {
+  function toggleRecord(e) {
     recording = !recording;
-    var fn = (recording) ? start : stop;
+    var fn = (recording) ? record : stopRecording;
     fn();
   }
 
-  function start() {
+  function record() {
     recording = true;
     steps = [];
-    startEl.innerHTML = 'stop';
+    recordEl.innerHTML = 'stop';
     on();
   }
 
-  function stop() {
+  function stopRecording() {
     recording = false;
-    startEl.innerHTML = 'record';
+    recordEl.innerHTML = 'record';
     off();
   }
 
-  function play() {
-    playing = !playing;
-    if (playing) {
-      playEl.innerHTML = 'stop';
+  function toggleRun() {
+    running = !running;
+
+    if (running) {
+      runEl.innerHTML = 'stop';
       stop();
       run(steps.slice(0));
     }
     else {
-      stopPlaying();
+      stopRunning();
     }
   }
 
-  function stopPlaying() {
-    playing = false;
-    playEl.innerHTML = 'play';
+  function stopRunning() {
+    running = false;
+    runEl.innerHTML = 'run';
   }
 
   function run(steps) {
-    if (steps.length == 0 || !playing) {
-      stopPlaying();
+    if (steps.length == 0 || !running) {
+      stopRunning();
       return;
     }
 
@@ -88,112 +131,48 @@
 
   function on() {
     events.forEach(function (event) {
-      document.addEventListener(event, record, true);
+      document.addEventListener(event, capture, true);
     });
   }
 
   function off() {
     events.forEach(function (event) {
-      document.removeEventListener(event, record, true);
+      document.removeEventListener(event, capture, true);
     });
   }
 
-  function record(e) {
+  function capture(e) {
     var attr = e.target.getAttribute('data-polly-action');
     if (attr) return;
 
     time = time || Date.now();
+
     var now = Date.now();
     var name = getName(e);
-    var step = (name == "KeyboardEvent") ?
-      recordKeyboardEvent(e) :
-      recordMouseEvent(e);
+    e.view = '';
 
-    step.cancelBubble = e.cancelBubble,
-    step.cancelable = e.cancelable,
-    step.detail = e.detail,
-    step.type = e.type;
+    var step = copy({}, e, eventMap[name].args);
+
     step.name = name;
     step.time = now - time;
     step.path = getElementXPath(e.target);
+
+    captureFilters[step.type] && captureFilters[step.type](e, step);
 
     time = now;
     steps.push(step);
   }
 
-  function recordKeyboardEvent(e) {
-    return {
-      keyCode: e.keyCode,
-      charCode: e.charCode,
-      keyLocation: e.keyLocation,
-    };
-  }
-
-  function recordMouseEvent(e) {
-    return {
-      detail: e.detail,
-      screenX: e.screenX,
-      screenY: e.screenY,
-      clientX: e.clientX,
-      clientY: e.clientY,
-      ctrlKey: e.ctrlKey,
-      altKey: e.altKey,
-      shiftKey: e.shiftKey,
-      metaKey: e.metaKey,
-      button: e.button
-    };
-  }
-
   function simulate(step) {
-    var event = (step.name == "KeyboardEvent") ?
-      simulateKeyboardEvent(step) :
-      simulateMouseEvent(step);
-
+    var eventAttrs = eventMap[step.name];
+    var event = document.createEvent(eventAttrs.name);
     var el = getElementByXPath(step.path);
+
+    event[eventAttrs.fn].apply(event, objToArray(step, eventAttrs.args));
     el.focus();
-    el.value += String.fromCharCode(step.keyCode);
+
+    simulateFilters[step.type] && simulateFilters[step.type](el, step);
     el.dispatchEvent(event);
-  }
-
-  function simulateKeyboardEvent(step) {
-    var event = document.createEvent('KeyboardEvent');
-
-    event.initKeyboardEvent(
-      step.type,
-      step.canBubble,
-      step.cancelable,
-      document.defaultView,
-      step.keyCode,
-      step.keyCode,
-      step.keyLocation,
-      "",
-      false,
-      "");
-
-    return event;
-  }
-
-  function simulateMouseEvent(step) {
-    var event = document.createEvent('MouseEvent');
-
-    event.initMouseEvent(
-      step.type,
-      step.canBubble,
-      step.cancelable,
-      document.defaultView,
-      step.detail,
-      step.screenX,
-      step.screenY,
-      step.clientX,
-      step.clientY,
-      step.ctrlKey,
-      step.altKey,
-      step.shiftKey,
-      step.metaKey,
-      step.button,
-      null);
-
-    return event;
   }
 
   // helpers
@@ -236,6 +215,33 @@
     var funcNameRegex = /function (.{1,})\(/;
     var results = (funcNameRegex).exec((obj).constructor.toString());
     return (results && results.length > 1) ? results[1] : "";
+  }
+
+  function copy(dest, src, attrs) {
+    attrs || (attrs = {});
+
+    for (var key in src) {
+      if (attrs.indexOf(key) > -1) {
+        if (typeof src[key] == "object") {
+          dest[key] = '';
+        }
+        else {
+          dest[key] = src[key];
+        }
+      }
+    }
+
+    return dest;
+  }
+
+  function objToArray(src, attrs) {
+    var arr = [];
+
+    for (var i = 0, l = attrs.length; i < l; i++) {
+      arr.push(src[attrs[i]]);
+    }
+
+    return arr;
   }
 
   return { init: init };

@@ -9,11 +9,25 @@
 <body>
   <a data-item="click1" href="#">element 1</a><br />
   <a data-item="click2" href="#">element 2</a><br />
+
+  yes: <input type="radio" name="radio" value="1" />
+  no: <input type="radio" name="radio" value="2" /><br />
+
+  check: <input type="checkbox" name="checkbox" /><br />
+
+  <select name="select">
+    <option value="1">option 1</option>
+    <option value="2">option 2</option>
+  </select><br />
+
   <input type="text" value="" /><br />
   <textarea name=""></textarea>
-
     <script src="polly.js"></script>
     <script>
+
+      $('[name=select]').on('change', function () {
+        console.log('changed');
+      });
       polly.init();
     </script>
 </body>
