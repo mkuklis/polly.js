@@ -63,7 +63,6 @@
     }
   };
 
-
   function init() {
     var div = document.createElement('div');
     div.innerHTML = template;
