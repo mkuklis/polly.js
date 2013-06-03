@@ -5,7 +5,7 @@
 
 ## Description
 
-**polly.js** is a little experiment which allows for saving user interactions into JSON format for later reuse. 
+**polly.js** is a little experiment which lets you save your interactions into JSON format for later reuse. 
 
 
 ## Demo
